@@ -259,15 +259,17 @@ export async function findRoom(nodes, q){
 }
 
 // ---- AR: where is the camera looking? Accept only a match that clearly stands out ----
-export async function locate(nodes, frame, force){
+export async function locate(nodes, frame, force, onDebug = () => {}){
   const q = { e: await embedImage(frame), d: await embedDino(frame) }, all = [];
   for(const n of nodes) n.wins.forEach((w, i) => all.push({ s: fuse(q, w), node: n, i, yaw: w.yaw }));
   const best = all.reduce((a, b) => b.s > a.s ? b : a);
-  if(!force){
-    const [m, sd] = stats(all.map(x => x.s));
-    const other = Math.max(-1, ...all.filter(x => x.node !== best.node).map(x => x.s));
-    if(!(best.s >= 0.6 && (best.s - m) / sd > 3 && (nodes.length < 2 || best.s - other >= 0.03))) return null;
-  }
+  const [m, sd] = stats(all.map(x => x.s));
+  const z = (best.s - m) / sd;
+  const other = Math.max(-1, ...all.filter(x => x.node !== best.node).map(x => x.s));
+  const margin = best.s - other;
+  const accepted = !!force || (best.s >= 0.6 && z > 3 && (nodes.length < 2 || margin >= 0.03));
+  onDebug({ room: best.node.name, score: best.s, z, margin, accepted, candidates: all.length });
+  if(!accepted) return null;
   const W = best.node.wins, N = W.length, full = best.node.haov === 360;          // finer direction: blend with the two neighbouring views
   let num = 0, den = 1;
   for(const dk of [-1, 1]){

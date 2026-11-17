@@ -168,6 +168,10 @@
     <canvas id="arCv"></canvas>
     <div class="hud"><p id="arMsg" role="status"></p></div>
     <div id="arrow" hidden><svg viewBox="0 0 100 100"><path d="M50 6 L90 78 L50 62 L10 78 Z"/></svg></div>
+    <details id="arDebug" class="ar-debug" open>
+      <summary>Diagnostics <span id="arDebugState">Starting</span></summary>
+      <div id="arDebugLog" role="log" aria-live="polite"></div>
+    </details>
     <div class="dock">
       <select id="arStart" aria-label="I'm at" hidden><option value="">I'm at...</option></select>
       <div class="bar"><select id="arDest" aria-label="Where to"></select><button id="arMic" class="ghost" type="button">Speak</button></div>

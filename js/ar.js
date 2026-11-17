@@ -7,6 +7,19 @@ import { xrSupported, startXR } from './xr.js';
 let tour, cur, dest, path, linkYaw = null, offset = 0, heading = 0, pitch = 0, stream, gotAbs = false, last = '', raf = 0, canXR = false, auto = 0, busy = false, goal = null;
 const n180 = a => ((a % 360) + 540) % 360 - 180;
 const name = id => tour.nodes.find(n => n.id === id).name;
+const errorText = error => `${error && error.name ? error.name + ': ' : ''}${error && error.message ? error.message : String(error)}`;
+function debug(text, level = 'info'){
+  const log = $('arDebugLog');
+  if(!log) return;
+  const line = document.createElement('div');
+  const time = new Date().toLocaleTimeString();
+  line.className = level;
+  line.textContent = `${time} ${text}`;
+  log.append(line);
+  while(log.children.length > 30) log.firstElementChild.remove();
+  log.scrollTop = log.scrollHeight;
+  $('arDebugState').textContent = text;
+}
 const onAbs = e => { if(e.alpha != null){ gotAbs = true; heading = (360 - e.alpha) % 360; } if(e.beta != null) pitch = 90 - e.beta; };
 const onRel = e => {
   if(e.beta != null) pitch = 90 - e.beta;                      // how far the phone looks down
@@ -20,11 +33,31 @@ async function startCam(){
 
 export async function openAR(t, back){
   tour = t; cur = dest = path = linkYaw = null; offset = 0; goal = { tour }; show('ar');
+  $('arDebugLog').replaceChildren(); $('arDebug').open = true;
+  debug(`Starting scene comparison for ${t.nodes.length} saved spots`);
   const ask = typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission
     ? DeviceOrientationEvent.requestPermission() : Promise.resolve('granted');   // must start on the tap (iPhone)
   const msg = m => $('arMsg').textContent = m;
-  msg('Loading AI...'); await loadModels(msg); await ask;
-  await startCam(); canXR = /Android/i.test(navigator.userAgent) && await xrSupported();
+  msg('Loading AI...');
+  try{
+    await loadModels(m => { msg(m); debug(m); });
+    debug('Scene-matching models ready');
+  }catch(error){
+    debug(`AI model loading failed: ${errorText(error)}`, 'error');
+    msg(`AI models could not load: ${errorText(error)}. See Diagnostics.`);
+    return;
+  }
+  try{ debug(`Motion permission: ${await ask}`); }
+  catch(error){ debug(`Motion permission request failed: ${errorText(error)}`, 'error'); }
+  try{
+    await startCam();
+    debug(`Camera ready (${ $('cam').videoWidth || 'waiting for video' } x ${ $('cam').videoHeight || 'waiting' })`);
+  }catch(error){
+    debug(`Camera start failed: ${errorText(error)}`, 'error');
+    msg(`Camera could not start: ${errorText(error)}. Check permission. See Diagnostics.`);
+    return;
+  }
+  canXR = /Android/i.test(navigator.userAgent) && await xrSupported();
   $('arXR').hidden = !canXR;
   $('arXR').onclick = async () => {
     if(linkYaw == null || !dest) return;
@@ -49,22 +82,41 @@ export async function openAR(t, back){
 }
 
 async function look(silent){
-  const v = $('cam'); if(!v.videoWidth) return;          // camera not ready (for example during AR path)
+  debug(`${silent ? 'Automatic' : 'Manual'} scene check started`);
+  const v = $('cam'); if(!v.videoWidth){ debug('Camera frame not ready yet', 'error'); return; }          // camera not ready (for example during AR path)
   if(!silent) $('arMsg').textContent = 'Looking...';
   const h0 = getHeading();                               // the compass heading at the moment of the picture
-  const c = document.createElement('canvas'); c.width = c.height = 512;
-  const s = Math.min(v.videoWidth, v.videoHeight);
-  c.getContext('2d').drawImage(v, (v.videoWidth-s)/2, (v.videoHeight-s)/2, s, s, 0, 0, 512, 512);
-  const t = document.createElement('canvas'); t.width = t.height = 64; const tg = t.getContext('2d'); tg.drawImage(c, 0, 0, 64, 64);
-  const px = tg.getImageData(0, 0, 64, 64).data; let sum = 0, sum2 = 0;      // a dark or blank picture is never used
-  for(let i = 0; i < px.length; i += 4){ const y = .299*px[i] + .587*px[i+1] + .114*px[i+2]; sum += y; sum2 += y*y; }
-  const cnt = px.length / 4, mean = sum / cnt, sd = Math.sqrt(sum2 / cnt - mean*mean);
-  if(mean < 35 || sd < 12){ if(!silent) $('arMsg').textContent = 'The camera sees nothing clear. Check that it is on and not covered.'; return; }
-  const r = await locate(tour.nodes, c.toDataURL('image/jpeg', 0.85));
-  if(!r){ if(!silent) $('arMsg').textContent = 'This spot is not in the tour. Try a clearer view.'; return; }
-  if(silent && r.node.id === cur){ offset = n180(offset + 0.25 * n180((r.yaw - h0) - offset)); return; }   // same spot: arrows stay steady, direction improves slowly
-  cur = r.node.id; offset = n180(r.yaw - h0);            // ties the compass to the panorama
-  plan();
+  let c, mean, sd;
+  try{
+    c = document.createElement('canvas'); c.width = c.height = 512;
+    const s = Math.min(v.videoWidth, v.videoHeight);
+    c.getContext('2d').drawImage(v, (v.videoWidth-s)/2, (v.videoHeight-s)/2, s, s, 0, 0, 512, 512);
+    const t = document.createElement('canvas'); t.width = t.height = 64; const tg = t.getContext('2d'); tg.drawImage(c, 0, 0, 64, 64);
+    const px = tg.getImageData(0, 0, 64, 64).data; let sum = 0, sum2 = 0;      // a dark or blank picture is never used
+    for(let i = 0; i < px.length; i += 4){ const y = .299*px[i] + .587*px[i+1] + .114*px[i+2]; sum += y; sum2 += y*y; }
+    const cnt = px.length / 4; mean = sum / cnt; sd = Math.sqrt(sum2 / cnt - mean*mean);
+  }catch(error){
+    debug(`Camera frame capture failed: ${errorText(error)}`, 'error');
+    if(!silent) $('arMsg').textContent = `Camera frame capture failed: ${errorText(error)}. See Diagnostics.`;
+    return;
+  }
+  debug(`Frame quality: brightness ${mean.toFixed(1)}/255, detail ${sd.toFixed(1)} (need 35 and 12)`);
+  if(mean < 35 || sd < 12){ debug('Frame too dark or unclear; comparison skipped', 'error'); if(!silent) $('arMsg').textContent = 'The camera sees nothing clear. Check that it is on and not covered.'; return; }
+  try{
+    const started = performance.now();
+    const r = await locate(tour.nodes, c.toDataURL('image/jpeg', 0.85), false, result => {
+      debug(`Compare ${result.accepted ? 'matched' : 'rejected'}: ${result.room}, score ${result.score.toFixed(3)}, z ${result.z.toFixed(2)}, margin ${result.margin.toFixed(3)} (${result.candidates} views)`);
+    });
+    debug(`Scene comparison took ${(performance.now() - started).toFixed(0)} ms`);
+    if(!r){ if(!silent) $('arMsg').textContent = 'This spot is not in the tour. Try a clearer view.'; return; }
+    if(silent && r.node.id === cur){ offset = n180(offset + 0.25 * n180((r.yaw - h0) - offset)); return; }   // same spot: arrows stay steady, direction improves slowly
+    cur = r.node.id; offset = n180(r.yaw - h0);            // ties the compass to the panorama
+    debug(`Current spot: ${name(cur)}`);
+    plan();
+  }catch(error){
+    debug(`Scene comparison failed: ${errorText(error)}`, 'error');
+    if(!silent) $('arMsg').textContent = `Scene comparison failed: ${errorText(error)}. See Diagnostics.`;
+  }
 }
 function plan(){
   linkYaw = null; path = null; $('arXR').hidden = true;

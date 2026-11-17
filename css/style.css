@@ -218,6 +218,17 @@ button.danger{background:var(--negative-bg);color:var(--negative)}
 #arrow path{fill:var(--accent);stroke:#fff;stroke-width:3;stroke-linejoin:round}
 #xrOverlay{position:fixed;inset:0;z-index:20;pointer-events:none}
 #xrOverlay button{pointer-events:auto}
+.ar-debug{position:absolute;z-index:1;left:var(--pad);right:var(--pad);bottom:calc(138px + env(safe-area-inset-bottom));
+  max-height:34svh;overflow:hidden;background:rgba(0,0,0,.82);border-radius:var(--radius-inner);font:12px/16px ui-monospace,SFMono-Regular,Consolas,monospace}
+.ar-debug summary{display:flex;align-items:center;justify-content:space-between;min-height:36px;padding:0 12px;color:var(--muted);
+  font:500 13px/18px var(--font);cursor:pointer;list-style:none}
+.ar-debug summary::-webkit-details-marker{display:none}
+.ar-debug summary::after{content:"";width:8px;height:8px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;transform:rotate(45deg)}
+.ar-debug:not([open]) summary::after{transform:rotate(-45deg)}
+#arDebugState{flex:1;min-width:0;margin-left:12px;overflow:hidden;color:var(--text);text-align:right;text-overflow:ellipsis;white-space:nowrap}
+#arDebugLog{max-height:calc(34svh - 36px);overflow:auto;padding:0 12px 10px;color:#d0d0d0;white-space:normal}
+#arDebugLog div{overflow-wrap:anywhere}
+#arDebugLog .error{color:#ff8796}
 
 /* ---------- wider screens ---------- */
 @media (min-width:700px){

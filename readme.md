@@ -127,7 +127,9 @@ small shared helpers.
 - **`js/ar.js`** — Phone-camera directions. It uses the camera to identify the
   visitor's current tour spot, reads compass/motion direction, finds a route
   through the tour, and draws a moving path on the camera view. It can hand off
-  to the WebXR path when available.
+  to the WebXR path when available. A temporary Diagnostics panel on the
+  “Where am I?” screen shows model/camera activity, scene-match scores, and
+  errors while testing; it can be removed after debugging is complete.
 - **`js/xr.js`** — The optional WebXR immersive-AR path. It checks floor
   surfaces using the device's hit-test feature and places directional markers
   in the camera-based AR view.
