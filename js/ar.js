@@ -1,6 +1,7 @@
 import { loadModels, locate, route, findRoom } from './ai.js';
 import { listen, speak } from './voice.js';
 import { $, show } from './ui.js';
+import { startHeading, stopHeading, getHeading, hasCompass } from './heading.js';
 import { xrSupported, startXR } from './xr.js';
 
 let tour, cur, dest, path, linkYaw = null, offset = 0, heading = 0, pitch = 0, stream, gotAbs = false, last = '', raf = 0, canXR = false, auto = 0, busy = false, goal = null;
@@ -23,14 +24,15 @@ export async function openAR(t, back){
     ? DeviceOrientationEvent.requestPermission() : Promise.resolve('granted');   // must start on the tap (iPhone)
   const msg = m => $('arMsg').textContent = m;
   msg('Loading AI...'); await loadModels(msg); await ask;
-  await startCam(); canXR = await xrSupported();
+  await startCam(); canXR = /Android/i.test(navigator.userAgent) && await xrSupported();
   $('arXR').hidden = !canXR;
   $('arXR').onclick = async () => {
+    if(linkYaw == null || !dest) return;
     const turn = n180(linkYaw - (heading + offset));
     stream && stream.getTracks().forEach(t => t.stop());          // free the camera for the AR session
     await startXR({ turn, label: name(dest), onEnd: () => startCam() });
   };
-  addEventListener('deviceorientationabsolute', onAbs, true); addEventListener('deviceorientation', onRel, true);
+  addEventListener('deviceorientationabsolute', onAbs, true); startHeading(); addEventListener('deviceorientation', onRel, true);
   const sel = $('arDest'); sel.innerHTML = '<option value="">Where to?</option>';
   t.nodes.forEach(n => sel.add(new Option(n.name, n.id)));
   sel.onchange = () => { dest = sel.value || null; plan(); };
@@ -42,22 +44,28 @@ export async function openAR(t, back){
   }, 3500);
   $('arBack').onclick = () => { close(); back(); };
   raf = requestAnimationFrame(render);
+  heading = getHeading();
   msg('Hold the phone upright, tilted slightly down. Point at a room label or tap "Where am I?"');
 }
 
 async function look(silent){
   const v = $('cam'); if(!v.videoWidth) return;          // camera not ready (for example during AR path)
   if(!silent) $('arMsg').textContent = 'Looking...';
+  const h0 = getHeading();                               // the compass heading at the moment of the picture
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const s = Math.min(v.videoWidth, v.videoHeight);
   c.getContext('2d').drawImage(v, (v.videoWidth-s)/2, (v.videoHeight-s)/2, s, s, 0, 0, 512, 512);
+  const t = document.createElement('canvas'); t.width = t.height = 64; const tg = t.getContext('2d'); tg.drawImage(c, 0, 0, 64, 64);
+  const px = tg.getImageData(0, 0, 64, 64).data; let sum = 0, sum2 = 0;      // a dark or blank picture is never used
+  for(let i = 0; i < px.length; i += 4){ const y = .299*px[i] + .587*px[i+1] + .114*px[i+2]; sum += y; sum2 += y*y; }
+  const cnt = px.length / 4, mean = sum / cnt, sd = Math.sqrt(sum2 / cnt - mean*mean);
+  if(mean < 35 || sd < 12){ if(!silent) $('arMsg').textContent = 'The camera sees nothing clear. Check that it is on and not covered.'; return; }
   const r = await locate(tour.nodes, c.toDataURL('image/jpeg', 0.85));
   if(!r){ if(!silent) $('arMsg').textContent = 'This spot is not in the tour. Try a clearer view.'; return; }
-  if(silent && r.node.id === cur) return;                // same spot: keep the arrows steady
-  cur = r.node.id; offset = n180(r.yaw - heading);       // ties the compass to the panorama
+  if(silent && r.node.id === cur){ offset = n180(offset + 0.25 * n180((r.yaw - h0) - offset)); return; }   // same spot: arrows stay steady, direction improves slowly
+  cur = r.node.id; offset = n180(r.yaw - h0);            // ties the compass to the panorama
   plan();
 }
-
 function plan(){
   linkYaw = null; path = null; $('arXR').hidden = true;
   if(!cur){ $('arMsg').textContent = 'Looking for your spot... point the camera around.'; return; }
@@ -76,7 +84,7 @@ function render(t){
   if(cv.width !== Math.round(W*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
   const arrow = $('arrow'); if(linkYaw == null){ arrow.hidden = true; return; }
-  const a = n180(linkYaw - (heading + offset));
+  if(!hasCompass()){ $('arMsg').textContent = 'No compass on this device. Test AR on a phone.'; arrow.hidden = true; return; }  const a = n180(linkYaw - (heading + offset));
   const text = Math.abs(a) < 25 ? 'Walk forward' : Math.abs(a) > 150 ? 'Turn around' : a > 0 ? 'Turn right' : 'Turn left';
   $('arMsg').textContent = text + ' to ' + name(dest);
   if(text !== last){ last = text; speak(text); }
@@ -104,6 +112,7 @@ function floor(g, W, H, aDeg, t){
 }
 
 function close(){
+  stopHeading();
   clearInterval(auto);
   cancelAnimationFrame(raf);
   removeEventListener('deviceorientationabsolute', onAbs, true); removeEventListener('deviceorientation', onRel, true);

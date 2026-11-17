@@ -104,19 +104,24 @@ export async function videoFrames(file, say){
   await new Promise(r => v.onloadedmetadata = r);
   if(!isFinite(v.duration)){                                           // recordings from the browser need this to find their length
     v.currentTime = 1e101; await new Promise(r => v.ontimeupdate = r); v.ontimeupdate = null;
-    v.currentTime = 0; await new Promise(r => v.onseeked = r);
+    await new Promise(r => { v.onseeked = r; v.currentTime = 0; });
   }
-  const w = Math.min(1280, v.videoWidth), h = Math.round(w * v.videoHeight / v.videoWidth);
+  const total = v.duration, w = Math.min(1280, v.videoWidth), h = Math.round(w * v.videoHeight / v.videoWidth);
   const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
-  const step = Math.max(1, v.duration / 30), cand = [];
-  for(let t = 0.3; t < v.duration; t += step){
-    say(`Reading the video: ${Math.round(t / v.duration * 100)}%`);
-    v.currentTime = t; await new Promise(r => v.onseeked = r); g.drawImage(v, 0, 0, w, h);
-    const o = gray(c); if(bright(o) < 40) continue;
-    cand.push({ o, t, s: sharp(o), b: await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9)) });
+  const N = Math.min(24, Math.max(4, Math.round(total / 3))), seg = total / N, out = [];
+  for(let i = 0; i < N; i++){                                          // every part of the walk keeps one spot
+    say(`Reading the video: ${Math.round(i / N * 100)}%`);
+    let best = null;
+    for(const f of [0.2, 0.5, 0.8]){                                   // three tries in each part, keep the clearest
+      const t = Math.min(total - 0.05, (i + f) * seg);
+      await new Promise(r => { v.onseeked = r; v.currentTime = t; });
+      g.drawImage(v, 0, 0, w, h);
+      const o = gray(c), s = sharp(o), lit = bright(o) >= 40;
+      if(!best || (lit && !best.lit) || (lit === best.lit && s > best.s)){
+        best = { s, lit, t, b: await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9)) };
+      }
+    }
+    out.push(Object.assign(best.b, { t: best.t }));
   }
-  const med = cand.map(x => x.s).sort((a,b) => a-b)[cand.length >> 1] || 0;
-  const out = []; let prev = null;
-  for(const x of cand){ if(x.s < med*0.6) continue; if(prev && diff(x.o, prev) < 10) continue; prev = x.o; out.push(Object.assign(x.b, { t: x.t })); }
   return out;
 }

@@ -259,26 +259,24 @@ export async function findRoom(nodes, q){
 }
 
 // ---- AR: where is the camera looking? Accept only a match that clearly stands out ----
-export async function locate(nodes, frame){
-  if(nodes.some(n => n.sign || /[A-Za-z]{0,2}\d{2,4}[A-Za-z]?/.test(n.name))){
-    const label = await readSign(frame);
-    if(label){
-      const key = normalizeSign(label);
-      const matches = nodes.filter(n =>
-        normalizeSign(n.sign) === key ||
-        normalizeSign(n.name) === key ||
-        (/\d/.test(key) && [n.sign, n.name].some(value => normalizeSign(value).endsWith(key)))
-      );
-      if(matches.length === 1){
-        const node = matches[0];
-        return { node, yaw:node.signYaw != null ? node.signYaw : 0, s:1 };
-      }
-    }
-  }
+export async function locate(nodes, frame, force){
   const q = { e: await embedImage(frame), d: await embedDino(frame) }, all = [];
-  for(const n of nodes) for(const w of n.wins) all.push({ s: fuse(q, w), node: n, yaw: w.yaw });
-  const [m, sd] = stats(all.map(x => x.s)), best = all.reduce((a, b) => b.s > a.s ? b : a);
-  return (best.s - m) / sd > 2.5 ? best : null;
+  for(const n of nodes) n.wins.forEach((w, i) => all.push({ s: fuse(q, w), node: n, i, yaw: w.yaw }));
+  const best = all.reduce((a, b) => b.s > a.s ? b : a);
+  if(!force){
+    const [m, sd] = stats(all.map(x => x.s));
+    const other = Math.max(-1, ...all.filter(x => x.node !== best.node).map(x => x.s));
+    if(!(best.s >= 0.6 && (best.s - m) / sd > 3 && (nodes.length < 2 || best.s - other >= 0.03))) return null;
+  }
+  const W = best.node.wins, N = W.length, full = best.node.haov === 360;          // finer direction: blend with the two neighbouring views
+  let num = 0, den = 1;
+  for(const dk of [-1, 1]){
+    let k = best.i + dk; if(full) k = (k + N) % N;
+    if(!W[k]) continue;
+    const wt = Math.exp((fuse(q, W[k]) - best.s) * 40);
+    num += wt * dk * 45; den += wt;
+  }
+  return { ...best, yaw: wrap(best.yaw + num / den) };
 }
 export function route(nodes, from, to){
   const prev = {[from]:null}, q = [from];

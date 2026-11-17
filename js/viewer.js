@@ -15,9 +15,9 @@ export function openTour(t, nav){
   const lim = n => n.haov < 360 ? n.haov/2 - 6 : 180, clamp = (n, y) => Math.max(-lim(n), Math.min(lim(n), y));
   const go = (n, l) => {                                   // Street View style: turn, zoom toward the arrow, fade into the next spot
     const to = byId(l.to), back = to.links.find(x => x.to === n.id);
-    viewer.lookAt(-4, clamp(n, l.yaw), 55, 450);
-    setTimeout(() => viewer.loadScene(to.id, 0, back ? clamp(to, wrap(back.yaw + 180)) : 'same', Math.min(100, maxH(to))), 380);
-  };
+        const bk = isBack(n, l);
+    viewer.lookAt(-4, bk ? 0 : clamp(n, l.yaw), bk ? Math.min(100, maxH(n)) : 55, 450);
+    setTimeout(() => viewer.loadScene(to.id, 0, to.haov < 360 ? 0 : (back ? clamp(to, wrap(back.yaw + 180)) : 'same'), Math.min(100, maxH(to))), 380);};
   let editing = false;
   const pano = $('pano'), asp = (pano.clientHeight || 400) / (pano.clientWidth || 600);
   const maxH = n => Math.min(110, Math.max(45, 2*Math.atan(Math.tan(n.vaov*Math.PI/360)*0.98/asp)*180/Math.PI));   // never zoom out wider than the picture is tall
@@ -35,7 +35,8 @@ export function openTour(t, nav){
         ghost.remove();
         const [pitch, yaw] = viewer.mouseEventToCoords({ clientX: ev.clientX, clientY: ev.clientY });
         if(isFinite(yaw) && isFinite(pitch)){
-          l.yaw = clamp(n, yaw); l.pitch = Math.max(-n.vaov/2 + 5, Math.min(n.vaov/2 - 5, pitch));
+          if(isBack(n, l)) l.yawView = clamp(n, yaw); else l.yaw = clamp(n, yaw);
+          l.pitch = Math.max(-n.vaov/2 + 5, Math.min(n.vaov/2 - 5, pitch));
           viewer.removeHotSpot(n.id + '>' + l.to, n.id); viewer.addHotSpot(hs(n, l), n.id);
           if(!nav.back) saveTour(t);
         }
@@ -45,9 +46,14 @@ export function openTour(t, nav){
       document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
     }, true);
   };
-  const hs = (n, l) => ({ id: n.id + '>' + l.to, type:'info', pitch: l.pitch ?? -10, yaw: clamp(n, l.yaw), cssClass:'arrowHS',
-    createTooltipFunc: d => { d.innerHTML = ARROW; d.title = 'Go to ' + byId(l.to).name; drag(d, n, l); },
-    clickHandlerFunc: () => { if(!editing) go(n, l); } });
+    const BACK = ARROW.replace('<svg ', '<svg style="transform:rotate(180deg)" ');
+  const isBack = (n, l) => l.back || (n.haov < 360 && Math.abs(l.yaw) > 90);      // a link to the spot behind you
+  const hs = (n, l) => { const back = isBack(n, l); return {
+    id: n.id + '>' + l.to, type:'info', cssClass:'arrowHS',
+    pitch: l.pitch ?? (back ? Math.max(-n.vaov/2 + 4, -38) : -10),
+    yaw: back ? (l.yawView ?? -lim(n)*0.7) : clamp(n, l.yaw),                  // the back arrow sits low and to the left, away from the forward one
+    createTooltipFunc: d => { d.innerHTML = back ? BACK : ARROW; d.title = (back ? 'Back to ' : 'Go to ') + byId(l.to).name; drag(d, n, l); },
+    clickHandlerFunc: () => { if(!editing) go(n, l); } }; };
   const scenes = {};
   t.nodes.forEach(n => {
     const yb = n.haov < 360 ? n.haov/2 : 175;                                  // locked at both ends: no wrap-around seam
