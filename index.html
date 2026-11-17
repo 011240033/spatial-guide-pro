@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Turn panoramic photos or a walk video into a tour of any indoor space, with AR directions to every room.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+<link rel="stylesheet" href="css/style.css">
+<title>Spatial Guide</title>
+</head>
+<body data-view="home">
+<header class="top">
+  <span class="brand">
+    <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 L92 80 L50 62 L8 80 Z"/></svg>
+    <b>Spatial Guide</b>
+  </span>
+  <button id="homeBtn" class="back" type="button" hidden>
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Home
+  </button>
+</header>
+<main>
+  <section id="home" class="view" data-tab="nav">
+    <div class="tabs" role="tablist" aria-label="Sections">
+      <button id="tabNav" class="tab" role="tab" type="button" aria-selected="true" aria-controls="navPanel">Navigate</button>
+      <button id="tabTours" class="tab" role="tab" type="button" aria-selected="false" aria-controls="toursPanel">Tours</button>
+    </div>
+    <div id="navPanel" role="tabpanel" aria-labelledby="tabNav">
+      <div class="titlerow">
+        <div><h1>Navigate</h1><p id="navSub" class="sub">Maps are saved on this device</p></div>
+        <button id="scanBtn" type="button">Scan a sign</button>
+      </div>
+      <div id="mapList" class="list"></div>
+      <div class="row mapacts">
+        <button id="mapNewBtn" class="ghost" type="button">Map a space</button>
+        <label id="mapImportLabel" class="textbtn" tabindex="0" role="button">Open a map file<input id="mapImport" type="file" accept=".sgmap" hidden></label>
+      </div>
+    </div>
+    <div id="toursPanel" role="tabpanel" aria-labelledby="tabTours" hidden>
+      <div class="titlerow">
+        <div><h1>Tours</h1><p id="homeSub" class="sub">Saved on this device</p></div>
+        <button id="newBtn" type="button">New tour</button>
+      </div>
+      <div id="list" class="list"></div>
+      <label id="importLabel" class="textbtn" tabindex="0" role="button">Open a tour file<input id="importFile" type="file" accept=".sgtour" hidden></label>
+    </div>
+  </section>
+
+  <section id="mapnew" class="view" hidden>
+    <div class="titlerow"><h1>Map a space</h1></div>
+    <p class="sub">Walk the corridors once with AR on. Spatial Guide records the paths, and the rooms you mark become destinations.</p>
+    <div class="field"><label for="mBuilding">Building</label><input id="mBuilding" placeholder="Main building" autocomplete="off"></div>
+    <div class="field"><label for="mFloor">Floor <span class="opt">optional</span></label><input id="mFloor" placeholder="4" autocomplete="off"></div>
+    <ol class="steps plain">
+      <li><b>Face a sign</b>Stand in front of a room sign and tap Mark room. Type its number on the keypad.</li>
+      <li><b>Walk</b>Go along the corridor. Face each sign as you pass it and mark the room.</li>
+      <li><b>Finish</b>Tap Finish to save. Start every later navigation by scanning one of these signs.</li>
+    </ol>
+    <button id="mStart" class="block" type="button">Start mapping</button>
+    <p id="mHint" class="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="nav" class="view cam" hidden>
+    <video id="nVideo" autoplay playsinline muted></video>
+    <div id="nBox" class="scanbox" hidden></div>
+    <div id="nHud" class="hud"><p id="nMsg" role="status"></p><p id="nChip" class="live" hidden></p></div>
+    <div id="nScan" class="dock"><div class="row"><button id="nType" class="ghost" type="button">Type the number</button><button id="nCancel" class="ghost" type="button">Cancel</button></div></div>
+    <div id="nConfirm" class="dock" hidden><p id="nAsk"></p><div class="row"><button id="nYes" type="button">Yes, I am here</button><button id="nNo" class="ghost" type="button">Scan again</button></div></div>
+    <div id="nPick" class="sheet" hidden>
+      <div class="sheet-top"><button id="nPickBack" class="back" type="button"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Cancel</button></div>
+      <h1 id="nPickTitle">Where to?</h1>
+      <p id="nFrom" class="sub" hidden></p><button id="nChange" class="textbtn" type="button" hidden>Change start</button>
+      <div class="field"><label class="sr" for="nSearch">Search rooms</label><input id="nSearch" type="search" placeholder="Search a room" autocomplete="off"></div>
+      <ul id="nList" class="rooms"></ul>
+    </div>
+    <div id="nRoute" class="sheet" hidden>
+      <div class="sheet-top"><button id="nRouteBack" class="back" type="button"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Destination</button></div>
+      <h1 id="nRTitle"></h1><p id="nRSub" class="sub"></p>
+      <svg id="nMap" class="map" role="img" aria-label="The route on the map"></svg>
+      <p id="nRStatus" class="status" role="status" aria-live="polite"></p>
+      <p id="nRNote" class="hint"></p>
+      <div class="actions"><button id="nGo" type="button">Start AR</button><button id="nSim" class="ghost" type="button">Simulate the walk</button></div>
+    </div>
+  </section>
+
+  <section id="builder" class="view" hidden>
+    <div class="titlerow"><h1>New tour</h1></div>
+    <div class="field">
+      <label for="bName">Name</label>
+      <input id="bName" placeholder="Main Office" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="bFloor">Floor <span class="opt">optional</span></label>
+      <input id="bFloor" placeholder="0" autocomplete="off" aria-describedby="bFloorHint">
+      <p id="bFloorHint" class="hint">0 is the ground floor. Leave empty for a single floor.</p>
+    </div>
+    <div class="field">
+      <span id="mLabel" class="label">Add spots</span>
+      <div id="bMethods" class="methods" role="group" aria-labelledby="mLabel">
+        <button type="button" class="method" data-method="sweep"><span><b>Guided sweep</b><small>Turn on the spot while the camera records</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button type="button" class="method" data-method="sweep180"><span><b>Quick 180 sweep</b><small>A half turn instead of a full one</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button type="button" class="method" data-method="photos"><span><b>Load panoramas</b><small>Pick panorama photos from this phone</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button type="button" class="method" data-method="record"><span><b>Record a walk</b><small>Rooms are labelled live as you go</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button type="button" class="method" data-method="upload"><span><b>Upload a video</b><small>Use a walk video you already have</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+      <p class="hint">Add as many as you like, in the order you walk.</p>
+    </div>
+    <input id="bFiles" type="file" accept="image/*" multiple hidden>
+    <input id="bVideo" type="file" accept="video/*" hidden>
+    <div id="bThumbs" class="thumbs"></div>
+    <button id="bBuild" class="block" type="button">Build tour</button>
+    <p id="bMsg" class="status" role="status" aria-live="polite"></p>
+    <div id="bReview"></div>
+  </section>
+
+  <section id="record" class="view cam" hidden>
+    <video id="rCam" autoplay playsinline muted></video>
+    <div class="hud"><p id="rLabel" class="live">Ready</p></div>
+    <div class="dock">
+      <p id="rMsg" role="status"></p>
+      <div class="row"><button id="rStart" type="button">Start recording</button><button id="rStop" type="button" hidden>Stop</button><button id="rCancel" class="ghost" type="button">Cancel</button></div>
+    </div>
+  </section>
+
+  <section id="capture" class="view cam" hidden>
+    <video id="cCam" autoplay playsinline muted></video>
+    <img id="cPrev" alt="Sweep preview" hidden>
+    <div class="hud"><p id="cMsg" role="status"></p><div class="prog" aria-hidden="true"><div id="cBar"></div></div></div>
+    <div class="dock">
+      <div class="row"><button id="cUse" type="button" hidden>Use this sweep</button><button id="cMore" class="ghost" type="button" hidden>Use and add another</button><button id="cRetake" class="ghost" type="button" hidden>Retake</button><button id="cStart" type="button">Start sweep</button><button id="cCancel" class="ghost" type="button">Cancel</button></div>
+    </div>
+  </section>
+
+  <section id="tour" class="view" hidden>
+    <h1 id="tName" class="tname"></h1>
+    <div id="floors" role="group" aria-label="Floor"></div>
+    <div id="pano"></div>
+    <p id="tHint" class="hint" hidden>Drag an arrow to where that spot really is, then tap Done editing.</p>
+    <div class="bar stackbar">
+      <select id="roomSel" aria-label="Spot"></select>
+    </div>
+    <div class="bar">
+      <input id="tSearch" type="search" aria-label="Find a place" placeholder="Find a place, e.g. kitchen" enterkeyhint="go">
+      <button id="tMic" class="ghost" type="button">Speak</button>
+    </div>
+    <div class="actions">
+      <button id="tBack" class="ghost" type="button" hidden>Back to review</button>
+      <button id="tAR" type="button">AR directions</button>
+      <button id="tEdit" class="ghost" type="button" aria-pressed="false" hidden>Edit arrows</button>
+    </div>
+    <details class="more">
+      <summary>Share and export</summary>
+      <div class="menu">
+        <button id="tShare" class="rowbtn" type="button" hidden>Share link</button>
+        <button id="tQR" class="rowbtn" type="button" hidden>Print QR for this spot</button>
+        <button id="tExport" class="rowbtn" type="button">Save tour file</button>
+      </div>
+    </details>
+  </section>
+
+  <section id="ar" class="view cam" hidden>
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="arCv"></canvas>
+    <div class="hud"><p id="arMsg" role="status"></p></div>
+    <div id="arrow" hidden><svg viewBox="0 0 100 100"><path d="M50 6 L90 78 L50 62 L10 78 Z"/></svg></div>
+    <div class="dock">
+      <select id="arStart" aria-label="I'm at" hidden><option value="">I'm at...</option></select>
+      <div class="bar"><select id="arDest" aria-label="Where to"></select><button id="arMic" class="ghost" type="button">Speak</button></div>
+      <div class="row">
+        <button id="arXR" type="button" hidden>Start AR path</button><button id="arFloor" class="ghost" type="button" hidden>I'm on the new floor</button>
+        <button id="arLook" class="ghost" type="button">Where am I?</button><button id="arScan" class="ghost" type="button" hidden>Scan QR</button><button id="arBack" class="ghost" type="button">Close</button>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="xrOverlay" hidden>
+  <div id="xrLegacy" class="dock"><p id="xrMsg" role="status"></p><div class="row"><button id="xrDone" type="button">Done, check my spot</button></div></div>
+  <div id="xrWalk" class="dock" hidden>
+    <p id="wMsg" role="status"></p><p id="wSub" class="sub"></p>
+    <div class="pair"><div class="pairitem"><span>Start</span><b id="wStart"></b></div><button id="wEnd" class="pairitem" type="button"><span>End</span><b id="wEndV"></b></button></div>
+    <div class="row"><button id="wRecal" class="ghost" type="button">Recalibrate</button><button id="wExit" class="ghost" type="button">Exit</button></div>
+  </div>
+  <div id="xrMap" class="dock" hidden>
+    <p id="mMsg" role="status"></p><p id="mStats" class="sub"></p>
+    <div class="row"><button id="mMark" type="button">Mark room</button><button id="mFinish" class="ghost" type="button">Finish</button><button id="mCancel" class="ghost" type="button">Cancel</button></div>
+  </div>
+  <div id="xrSheet" class="sheet" hidden>
+    <h1 id="xsTitle"></h1>
+    <ul id="xsList" class="rooms"></ul>
+    <div id="xsKeys" hidden><div id="xsDisp" class="keydisp ph" aria-live="polite">Room number</div><div id="xsGrid" class="keypad"></div></div>
+    <button id="xsClose" class="ghost block" type="button">Cancel</button>
+  </div>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
