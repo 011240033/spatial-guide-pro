@@ -224,10 +224,13 @@ export async function suggestRoomNames(blob, say = () => {}){
   } finally { URL.revokeObjectURL(url); }
 }
 export async function labelFrame(src){
-  const te = await labelEmbeds(), e = await embedImage(src);
+  return (await rankFrameLabels(await embedImage(src)))[0];
+}
+async function rankFrameLabels(e){
+  const te = await labelEmbeds();
   const raw = te.map(t => 100*dot(e, t)), mx = Math.max(...raw), ex = raw.map(x => Math.exp(x - mx)), z = ex.reduce((a,b) => a+b);
-  const p = ex.map(x => x / z), i = p.indexOf(Math.max(...p));
-  return { label: cap(LABELS[i]), conf: p[i] };
+  return ex.map((x, i) => ({ label: cap(LABELS[i]), conf: x / z }))
+    .sort((a, b) => b.conf - a.conf);
 }
 export async function nameRooms(nodes){
   const te = await labelEmbeds();
@@ -258,7 +261,7 @@ export async function findRoom(nodes, q){
   return nodes.map(n => ({n, s: dot(n.e, t)})).sort((a,b) => b.s - a.s)[0].n;
 }
 
-// ---- AR: where is the camera looking? Accept only a match that clearly stands out ----
+// ---- AR: combine scene similarity with room-content cues for close neighboring spots ----
 export async function locate(nodes, frame, force, onDebug = () => {}){
   const q = { e: await embedImage(frame), d: await embedDino(frame) }, all = [];
   for(const n of nodes) n.wins.forEach((w, i) => all.push({ s: fuse(q, w), node: n, i, yaw: w.yaw }));
@@ -267,18 +270,35 @@ export async function locate(nodes, frame, force, onDebug = () => {}){
   const z = (best.s - m) / sd;
   const other = Math.max(-1, ...all.filter(x => x.node !== best.node).map(x => x.s));
   const margin = best.s - other;
-  const accepted = !!force || (best.s >= 0.6 && z > 3 && (nodes.length < 2 || margin >= 0.03));
-  onDebug({ room: best.node.name, score: best.s, z, margin, accepted, candidates: all.length });
+  const visualAccepted = best.s >= 0.6 && z > 3 && (nodes.length < 2 || margin >= 0.03);
+  const [semantic, nextSemantic] = await rankFrameLabels(q.e);
+  const compact = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const semanticNodes = nodes.filter(n => compact(n.name).includes(compact(semantic.label)));
+  const semanticViews = semanticNodes.length === 1 ? all.filter(x => x.node === semanticNodes[0]) : [];
+  const semanticBest = semanticViews.reduce((a, b) => !a || b.s > a.s ? b : a, null);
+  const semanticGap = semantic.conf - (nextSemantic ? nextSemantic.conf : 0);
+  const semanticMatch = !!semanticBest && semantic.conf >= 0.18 && semanticGap >= 0.05
+    && semanticBest.s >= 0.58 && best.s - semanticBest.s <= 0.08;
+  const chosen = semanticMatch ? semanticBest : best;
+  const accepted = !!force || visualAccepted || semanticMatch;
+  const chosenZ = (chosen.s - m) / sd;
+  const chosenOther = Math.max(-1, ...all.filter(x => x.node !== chosen.node).map(x => x.s));
+  const chosenMargin = chosen.s - chosenOther;
+  onDebug({
+    room: chosen.node.name, score: chosen.s, z: chosenZ, margin: chosenMargin, accepted, candidates: all.length,
+    semantic: semantic.label, semanticConf: semantic.conf, semanticGap, usedSemantic: semanticMatch,
+    visualRoom: best.node.name,
+  });
   if(!accepted) return null;
-  const W = best.node.wins, N = W.length, full = best.node.haov === 360;          // finer direction: blend with the two neighbouring views
+  const W = chosen.node.wins, N = W.length, full = chosen.node.haov === 360;      // finer direction: blend with the two neighbouring views
   let num = 0, den = 1;
   for(const dk of [-1, 1]){
-    let k = best.i + dk; if(full) k = (k + N) % N;
+    let k = chosen.i + dk; if(full) k = (k + N) % N;
     if(!W[k]) continue;
-    const wt = Math.exp((fuse(q, W[k]) - best.s) * 40);
+    const wt = Math.exp((fuse(q, W[k]) - chosen.s) * 40);
     num += wt * dk * 45; den += wt;
   }
-  return { ...best, yaw: wrap(best.yaw + num / den) };
+  return { ...chosen, yaw: wrap(chosen.yaw + num / den) };
 }
 export function route(nodes, from, to){
   const prev = {[from]:null}, q = [from];

@@ -129,7 +129,9 @@ small shared helpers.
   through the tour, and draws a moving path on the camera view. It can hand off
   to the WebXR path when available. A temporary Diagnostics panel on the
   “Where am I?” screen shows model/camera activity, scene-match scores, and
-  errors while testing; it can be removed after debugging is complete.
+  errors while testing; it can be removed after debugging is complete. Scene
+  matching can use a confident room-content label (such as Bedroom) to break a
+  close visual tie between similarly located spots.
 - **`js/xr.js`** — The optional WebXR immersive-AR path. It checks floor
   surfaces using the device's hit-test feature and places directional markers
   in the camera-based AR view.

@@ -78,7 +78,7 @@ export async function openAR(t, back){
   $('arBack').onclick = () => { close(); back(); };
   raf = requestAnimationFrame(render);
   heading = getHeading();
-  msg('Hold the phone upright, tilted slightly down. Point at a room label or tap "Where am I?"');
+  msg('Hold the phone upright, point into the room or at its label, then tap "Where am I?"');
 }
 
 async function look(silent){
@@ -105,10 +105,10 @@ async function look(silent){
   try{
     const started = performance.now();
     const r = await locate(tour.nodes, c.toDataURL('image/jpeg', 0.85), false, result => {
-      debug(`Compare ${result.accepted ? 'matched' : 'rejected'}: ${result.room}, score ${result.score.toFixed(3)}, z ${result.z.toFixed(2)}, margin ${result.margin.toFixed(3)} (${result.candidates} views)`);
+      debug(`Compare ${result.accepted ? 'matched' : 'rejected'}: ${result.room}, score ${result.score.toFixed(3)}, z ${result.z.toFixed(2)}, margin ${result.margin.toFixed(3)} (${result.candidates} views); content: ${result.semantic} ${(result.semanticConf * 100).toFixed(0)}%${result.usedSemantic ? ', content cue selected this spot' : ''}${result.visualRoom !== result.room ? `; visual match: ${result.visualRoom}` : ''}`);
     });
     debug(`Scene comparison took ${(performance.now() - started).toFixed(0)} ms`);
-    if(!r){ if(!silent) $('arMsg').textContent = 'This spot is not in the tour. Try a clearer view.'; return; }
+    if(!r){ if(!silent) $('arMsg').textContent = 'I can’t tell which nearby room this is yet. Point farther inside the room or at its label, hold still, and try again.'; return; }
     if(silent && r.node.id === cur){ offset = n180(offset + 0.25 * n180((r.yaw - h0) - offset)); return; }   // same spot: arrows stay steady, direction improves slowly
     cur = r.node.id; offset = n180(r.yaw - h0);            // ties the compass to the panorama
     debug(`Current spot: ${name(cur)}`);
