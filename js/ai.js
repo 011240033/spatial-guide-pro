@@ -277,8 +277,8 @@ export async function locate(nodes, frame, force, onDebug = () => {}){
   const semanticViews = semanticNodes.length === 1 ? all.filter(x => x.node === semanticNodes[0]) : [];
   const semanticBest = semanticViews.reduce((a, b) => !a || b.s > a.s ? b : a, null);
   const semanticGap = semantic.conf - (nextSemantic ? nextSemantic.conf : 0);
-  const semanticMatch = !!semanticBest && semantic.conf >= 0.18 && semanticGap >= 0.05
-    && semanticBest.s >= 0.58 && best.s - semanticBest.s <= 0.08;
+  const semanticMatch = !!semanticBest && semantic.conf >= 0.35 && semanticGap >= 0.05
+    && semanticBest.s >= 0.35 && best.s - semanticBest.s <= 0.12;
   const chosen = semanticMatch ? semanticBest : best;
   const accepted = !!force || visualAccepted || semanticMatch;
   const chosenZ = (chosen.s - m) / sd;

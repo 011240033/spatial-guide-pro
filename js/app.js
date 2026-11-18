@@ -102,7 +102,11 @@ $('mapImport').onchange = async e => {
   try{ await importMap(f); home(); }catch(err){ $('navSub').textContent = err.message; }
 };
 for(const id of ['importLabel', 'mapImportLabel']) $(id).onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.currentTarget.querySelector('input').click(); } };
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js', { updateViaCache:'none' })
+    .then(reg => reg.update())
+    .catch(error => console.error('Service worker update failed:', error));
+}
 const sh = location.hash.match(/^#s=(\w+)/);
 if(sh){
   show('home'); tab('tours'); note('Opening the shared tour...');

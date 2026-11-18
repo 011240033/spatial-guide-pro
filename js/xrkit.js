@@ -10,6 +10,7 @@ const SHAPE = [[-.6, -.3], [0, .2], [.6, -.3], [.6, -.55], [0, -.05], [-.6, -.55
 const ACCENT = 0x4da3ff;
 
 export async function openXR({ overlay, onFrame, onEnd }){
+  document.querySelectorAll('video').forEach(v => { if(v.srcObject){ v.srcObject.getTracks().forEach(t => t.stop()); v.srcObject = null; } });
   overlay.hidden = false;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(devicePixelRatio); renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local');

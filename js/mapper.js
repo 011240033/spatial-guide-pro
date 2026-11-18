@@ -2,7 +2,7 @@
 // "Mark room" (facing a sign, typing its number on a keypad) turns a spot into a destination.
 import { saveMap } from './db.js';
 import { newMap, Recorder, roomsOf } from './graph.js';
-import { xrSupported, openXR } from './xrkit.js';
+import { openXR } from './xrkit.js';
 import { $, el, show, xrMode } from './ui.js';
 
 export function openMapNew(back){
@@ -14,7 +14,7 @@ async function run(back){
   const hint = t => $('mHint').textContent = t;
   const building = $('mBuilding').value.trim(), floor = $('mFloor').value.trim();
   if(!building) return hint('Enter the building name.');
-  if(!(await xrSupported())) return hint('Mapping needs AR: Chrome on an Android phone with ARCore.');
+  if(!navigator.xr) return hint('Mapping needs AR: Chrome on an Android phone with ARCore.');
   const map = newMap({ building, floor }), rec = new Recorder(map), say = t => $('mMsg').textContent = t;
   let cur = null, ready = false, changed = false, lastDraw = 0, discard = false, x = null;
   const stats = () => $('mStats').textContent = `${map.nodes.length} points, ${roomsOf(map).length} rooms marked`;

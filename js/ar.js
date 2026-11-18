@@ -20,6 +20,15 @@ function debug(text, level = 'info'){
   log.scrollTop = log.scrollHeight;
   $('arDebugState').textContent = text;
 }
+function pauseGuidance(reason){
+  const wasGuiding = !!dest && linkYaw != null;
+  cur = null; path = null; linkYaw = null;
+  $('arrow').hidden = true; $('arXR').hidden = true;
+  $('arMsg').textContent = wasGuiding
+    ? 'Directions paused: ' + reason + '. Stop and point the camera into the room or at its label.'
+    : 'I can’t identify your current spot: ' + reason + '. Point the camera into the room or at its label.';
+  if(wasGuiding) debug('Directions paused because the current spot could not be confirmed', 'error');
+}
 const onAbs = e => { if(e.alpha != null){ gotAbs = true; heading = (360 - e.alpha) % 360; } if(e.beta != null) pitch = 90 - e.beta; };
 const onRel = e => {
   if(e.beta != null) pitch = 90 - e.beta;                      // how far the phone looks down
@@ -83,7 +92,7 @@ export async function openAR(t, back){
 
 async function look(silent){
   debug(`${silent ? 'Automatic' : 'Manual'} scene check started`);
-  const v = $('cam'); if(!v.videoWidth){ debug('Camera frame not ready yet', 'error'); return; }          // camera not ready (for example during AR path)
+  const v = $('cam'); if(!v.videoWidth){ debug('Camera frame not ready yet', 'error'); pauseGuidance('the camera frame is not ready'); return; }          // camera not ready (for example during AR path)
   if(!silent) $('arMsg').textContent = 'Looking...';
   const h0 = getHeading();                               // the compass heading at the moment of the picture
   let c, mean, sd;
@@ -97,25 +106,25 @@ async function look(silent){
     const cnt = px.length / 4; mean = sum / cnt; sd = Math.sqrt(sum2 / cnt - mean*mean);
   }catch(error){
     debug(`Camera frame capture failed: ${errorText(error)}`, 'error');
-    if(!silent) $('arMsg').textContent = `Camera frame capture failed: ${errorText(error)}. See Diagnostics.`;
+    pauseGuidance(`camera frame capture failed (${errorText(error)})`);
     return;
   }
   debug(`Frame quality: brightness ${mean.toFixed(1)}/255, detail ${sd.toFixed(1)} (need 35 and 12)`);
-  if(mean < 35 || sd < 12){ debug('Frame too dark or unclear; comparison skipped', 'error'); if(!silent) $('arMsg').textContent = 'The camera sees nothing clear. Check that it is on and not covered.'; return; }
+  if(mean < 35 || sd < 12){ debug('Frame too dark or unclear; comparison skipped', 'error'); pauseGuidance('the camera view is too unclear'); return; }
   try{
     const started = performance.now();
     const r = await locate(tour.nodes, c.toDataURL('image/jpeg', 0.85), false, result => {
-      debug(`Compare ${result.accepted ? 'matched' : 'rejected'}: ${result.room}, score ${result.score.toFixed(3)}, z ${result.z.toFixed(2)}, margin ${result.margin.toFixed(3)} (${result.candidates} views); content: ${result.semantic} ${(result.semanticConf * 100).toFixed(0)}%${result.usedSemantic ? ', content cue selected this spot' : ''}${result.visualRoom !== result.room ? `; visual match: ${result.visualRoom}` : ''}`);
+      debug(`Compare ${result.accepted ? 'matched' : 'rejected'}: ${result.room}, score ${result.score.toFixed(3)}, z ${result.z.toFixed(2)}, margin ${result.margin.toFixed(3)} (${result.candidates} views); content: ${result.semantic} ${(result.semanticConf * 100).toFixed(0)}%, gap ${(result.semanticGap * 100).toFixed(0)} points${result.usedSemantic ? ', content cue selected this spot' : ''}${result.visualRoom !== result.room ? `; visual match: ${result.visualRoom}` : ''}`);
     });
     debug(`Scene comparison took ${(performance.now() - started).toFixed(0)} ms`);
-    if(!r){ if(!silent) $('arMsg').textContent = 'I can’t tell which nearby room this is yet. Point farther inside the room or at its label, hold still, and try again.'; return; }
+    if(!r){ pauseGuidance('I can’t tell which nearby spot this is'); return; }
     if(silent && r.node.id === cur){ offset = n180(offset + 0.25 * n180((r.yaw - h0) - offset)); return; }   // same spot: arrows stay steady, direction improves slowly
     cur = r.node.id; offset = n180(r.yaw - h0);            // ties the compass to the panorama
     debug(`Current spot: ${name(cur)}`);
     plan();
   }catch(error){
     debug(`Scene comparison failed: ${errorText(error)}`, 'error');
-    if(!silent) $('arMsg').textContent = `Scene comparison failed: ${errorText(error)}. See Diagnostics.`;
+    pauseGuidance(`scene comparison failed (${errorText(error)})`);
   }
 }
 function plan(){
