@@ -23,11 +23,16 @@ const diff = (a,b) => { let s=0; for(let i=0;i<a.length;i+=10) s += Math.abs(a[i
 export async function sweep(done, deg = 360){
   show('capture'); $('cPrev').hidden = true; $('cCam').hidden = false; $('cUse').hidden = true; $('cMore').hidden = true; $('cRetake').hidden = true;
   const msg = t => $('cMsg').textContent = t;
-  let abs = false, h = 0, run = false, stream;
+  let abs = false, h = 0, hasHeading = false, run = false, stream;
+  const setHeading = value => {
+    const next = (value + 360) % 360;
+    h = hasHeading ? (h + 0.2*n180(next - h) + 360) % 360 : next;
+    hasHeading = true;
+  };
   const ask = typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission
     ? DeviceOrientationEvent.requestPermission() : Promise.resolve();
-  const onAbs = e => { if(e.alpha != null){ abs = true; h = (360 - e.alpha) % 360; } };
-  const onRel = e => { if(!abs) h = e.webkitCompassHeading != null ? e.webkitCompassHeading : (360 - (e.alpha||0)) % 360; };
+  const onAbs = e => { if(e.alpha != null){ abs = true; setHeading(360 - e.alpha); } };
+  const onRel = e => { if(!abs) setHeading(e.webkitCompassHeading != null ? e.webkitCompassHeading : 360 - (e.alpha||0)); };
   const stop = () => {
     run = false; removeEventListener('deviceorientationabsolute', onAbs, true); removeEventListener('deviceorientation', onRel, true);
     stream && stream.getTracks().forEach(t => t.stop());
@@ -38,7 +43,7 @@ export async function sweep(done, deg = 360){
   const v = $('cCam'); v.srcObject = stream;
   addEventListener('deviceorientationabsolute', onAbs, true); addEventListener('deviceorientation', onRel, true);
   $('cStart').hidden = false; $('cBar').style.width = '0';
-  msg('Stand in the middle of the spot. Hold the phone upright, tap Start, then turn slowly to your right.');
+  msg('Stand in the middle of the spot. Hold the phone upright at one height, tap Start, then turn slowly to your right.');
   $('cStart').onclick = () => {
     if(bright(gray(v)) < 45) return msg('Too dark. Turn on a light, then try again.');
     const out = document.createElement('canvas'); out.width = deg*P; out.height = OH;
@@ -46,8 +51,8 @@ export async function sweep(done, deg = 360){
     const tick = () => {
       if(!run) return;
       const d = n180(h - last);
-      if(d < -3){ msg('Turn to the RIGHT, not left.'); last = h; }
-      else if(d >= 2){
+      if(d < -3){ msg('Turn to the RIGHT, not left.'); }
+      else if(d >= 1){
         const sw = (d*P + 2) / s;
         g.drawImage(v, (v.videoWidth - sw)/2, 0, sw, v.videoHeight, cum*P, 0, d*P + 2, OH);
         cum += d; last = h; $('cBar').style.width = Math.min(100, cum/(deg/100)) + '%';
