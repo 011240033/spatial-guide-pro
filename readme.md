@@ -226,6 +226,11 @@ Scan a room sign, confirm the number, pick a destination, then follow AR or scre
    corridor. Breadcrumbs every 1.2 m become the graph; walking back over old ground snaps onto existing nodes, so branches and
    loops form on their own. When supported, snapshots from marked spots are labeled after the AR walk using CLIP; these are
    suggestions, not room identifiers. *Finish* saves. Unsupported phones can still open maps and preview or simulate routes.
+   If AR mapping is slow or unavailable, choose **Build from panoramas** instead. This opens the existing tour builder: upload
+   panoramas in walking order, let CLIP suggest editable labels and DINO suggest links, then inspect the arrows. The result is
+   saved under **Tours**, not as a metric map under **Navigate**. Its camera-based AR screen uses scene matching, compass arrows,
+   and spoken turn prompts; it does not continuously track the user's floor position. DINO's links are suggestions, so verify
+   them before use.
 2. **Scan a sign**. Tesseract.js reads the room number (loaded on first use). Confirm it, or choose *Type the number*.
 3. **Pick a destination** from the searchable list, preview the route on the map, or *Simulate the walk* (works on any device).
 4. **Start AR or arrow guidance**. On a WebXR phone, stand where you scanned the sign, facing it. The route is A* over the graph,
@@ -241,7 +246,7 @@ Heading convention: yaw 0 faces -z, positive yaw turns left. Entry nodes store t
 
 ### Tests
 
-`node tests/logic.test.mjs` covers the graph, A*, smoothing, alignment, walker, recorder and map import (15 tests).
+`node tests/logic.test.mjs` covers the graph, A*, smoothing, alignment, walker, recorder and map import (18 tests).
 The AR layer (`xrkit.js`) has no automated test: it needs a real WebXR device.
 
 ### Known limits

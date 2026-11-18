@@ -92,9 +92,10 @@ async function home(){
   $('homeSub').textContent = tours.length ? `${count(tours.length, 'tour', 'tours')} on this device` : 'Saved on this device';
   if(tours.length) tours.forEach(t => tl.append(tourCard(t))); else tl.append(emptyTours());
 }
+const showTours = async () => { await home(); tab('tours'); };
 $('homeBtn').onclick = home;
 $('scanBtn').onclick = () => openNavigate(home);
-$('mapNewBtn').onclick = () => openMapNew(home);
+$('mapNewBtn').onclick = () => openMapNew(home, showTours);
 $('newBtn').onclick = () => startBuilder(home);
 $('importFile').onchange = async e => { if(e.target.files[0]){ await importTour(e.target.files[0]); home(); } };
 $('mapImport').onchange = async e => {

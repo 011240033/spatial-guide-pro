@@ -4,10 +4,15 @@ import { saveMap } from './db.js';
 import { newMap, Recorder, roomsOf } from './graph.js';
 import { openXR } from './xrkit.js';
 import { loadFrameLabelModel, suggestFrameLabels } from './ai.js';
+import { startBuilder } from './builder.js';
 import { $, el, show, xrMode } from './ui.js';
 
-export function openMapNew(back){
+export function openMapNew(back, panoramaDone = back){
   show('mapnew'); $('mHint').textContent = '';
+  $('mPanorama').onclick = () => startBuilder(panoramaDone, {
+    building: $('mBuilding').value.trim(),
+    floor: $('mFloor').value.trim(),
+  });
   $('mStart').onclick = () => run(back);
 }
 

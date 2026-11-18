@@ -53,15 +53,20 @@
 
   <section id="mapnew" class="view" hidden>
     <div class="titlerow"><h1>Map a space</h1></div>
-    <p class="sub">Walk the corridors once with AR on. Spatial Guide records the path and the rooms you mark become destinations. At junctions, add a QR checkpoint so visitors can confirm their position. The app can capture occasional images at marked places and use CLIP to suggest labels after mapping, if the browser supports camera images in AR. Mapping needs Chrome on an ARCore-supported Android phone, Google Play Services for AR, and HTTPS.</p>
+    <p class="sub">You can build a visual guide from panoramas without AR mapping, or try the experimental AR mapper. The panorama workflow is recommended if AR mapping is slow or unavailable.</p>
     <div class="field"><label for="mBuilding">Building</label><input id="mBuilding" placeholder="Main building" autocomplete="off"></div>
     <div class="field"><label for="mFloor">Floor <span class="opt">optional</span></label><input id="mFloor" placeholder="4" autocomplete="off"></div>
+    <h2>Panorama-based guide</h2>
+    <p class="sub">Use Guided sweep to capture spots in walking order, or load panorama photos. CLIP suggests room labels, which you can edit; DINO guesses links between uploaded photos. Check the arrows before relying on them. The finished guide is saved under Tours and uses camera arrows and spoken turn directions; it is not a measured floor map.</p>
+    <button id="mPanorama" class="block" type="button">Build from panoramas</button>
+    <h2>AR space mapping</h2>
+    <p class="sub">This records a measured route while you walk and still needs Chrome on an ARCore-supported Android phone, Google Play Services for AR, and HTTPS. Add QR checkpoints at junctions for phones that cannot track the floor.</p>
     <ol class="steps plain">
       <li><b>Face a sign</b>Stand in front of a room sign and tap Mark room. Type its number on the keypad.</li>
       <li><b>Walk</b>Mark room signs and add QR checkpoints at junctions; print each QR and place it there. Optional CLIP suggestions are processed after you finish, to avoid slowing the AR walk.</li>
       <li><b>Finish</b>Tap Finish to save. Start every later navigation by scanning one of these signs.</li>
     </ol>
-    <button id="mStart" class="block" type="button">Start mapping</button>
+    <button id="mStart" class="block ghost" type="button">Start AR space mapping</button>
     <p id="mHint" class="status" role="status" aria-live="polite"></p>
   </section>
 
@@ -114,7 +119,7 @@
         <button type="button" class="method" data-method="record"><span><b>Record a walk</b><small>Rooms are labelled live as you go</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
         <button type="button" class="method" data-method="upload"><span><b>Upload a video</b><small>Use a walk video you already have</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
       </div>
-      <p class="hint">Add as many as you like, in the order you walk.</p>
+      <p class="hint">Guided sweeps keep capture order. For uploaded photos, DINO guesses likely connections; check the arrows.</p>
     </div>
     <input id="bFiles" type="file" accept="image/*" multiple hidden>
     <input id="bVideo" type="file" accept="video/*" hidden>
