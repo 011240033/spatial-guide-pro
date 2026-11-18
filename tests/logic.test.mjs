@@ -53,6 +53,21 @@ t('recorder: breadcrumbs, snapping back on retrace, entries', () => {
   assert.ok(findRoom(x, '101').nb.length >= 1);
   R.mark([1, 0, -4.5], 0, '101'); assert.equal(x.nodes.filter(n => n.room === '101').length, 1);   // re-marking moves, never duplicates
 });
+t('recorder: QR checkpoints join the walked path and survive map import', () => {
+  const x = newMap({ building: 'B' }), R = new Recorder(x);
+  R.update([0, 0, 0]); R.update([0, 0, -1.2]);
+  const cp = R.markCheckpoint([0, 0, -2.4], Math.PI / 2, 'cp_123456789');
+  assert.ok(cp.nb.includes(x.nodes[1].id)); assert.equal(cp.yaw, Math.PI / 2);
+  const loaded = parseMap(JSON.stringify(x));
+  assert.equal(loaded.nodes.find(n => n.id === cp.id).checkpoint, 'cp_123456789');
+});
+t('recorder: nearby QR checkpoint does not overwrite a room sign direction', () => {
+  const x = newMap({ building: 'B' }), R = new Recorder(x);
+  R.update([0, 0, 0]); const room = R.mark([0, 0, -0.2], 0, '101');
+  const cp = R.markCheckpoint([0, 0, -0.3], Math.PI / 2, 'cp_987654321');
+  assert.notEqual(cp.id, room.id); assert.equal(room.yaw, 0);
+  assert.ok(room.nb.includes(cp.id)); assert.equal(room.checkpoint, undefined);
+});
 t('parseMap accepts a saved map and repairs one-way links', () => {
   const raw = JSON.parse(JSON.stringify(m)); raw.nodes[0].nb = [raw.nodes[1].id]; raw.nodes[1].nb = [];
   const p = parseMap(JSON.stringify(raw)); assert.ok(p.nodes[1].nb.includes(p.nodes[0].id)); assert.equal(p.nodes.length, m.nodes.length); assert.notEqual(p.id, m.id);

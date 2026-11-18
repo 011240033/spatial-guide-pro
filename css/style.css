@@ -216,6 +216,11 @@ button.danger{background:var(--negative-bg);color:var(--negative)}
 #arrow{position:absolute;left:50%;top:23%;width:88px;margin-left:-44px;transition:transform .15s}
 #arrow svg{display:block;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
 #arrow path{fill:var(--accent);stroke:#fff;stroke-width:3;stroke-linejoin:round}
+#nGuideArrow{position:absolute;z-index:1;left:50%;top:27%;width:96px;margin-left:-48px;transition:transform .15s}
+#nGuideArrow svg{display:block;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
+#nGuideArrow path{fill:var(--accent);stroke:#fff;stroke-width:3;stroke-linejoin:round}
+#nGuideHud{z-index:2}
+#nGuideDock{z-index:2}
 #xrOverlay{position:fixed;inset:0;z-index:20;pointer-events:none}
 #xrOverlay button{pointer-events:auto}
 .ar-debug{position:absolute;z-index:1;left:var(--pad);right:var(--pad);bottom:calc(138px + env(safe-area-inset-bottom));

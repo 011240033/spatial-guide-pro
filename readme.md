@@ -16,7 +16,8 @@ does, how its main parts work together, and what each file is for.
 - Let the tour creator review room names and links before saving.
 - Browse a tour as a collection of interactive panoramic views.
 - Search for a room by typing or, in supported browsers, speaking.
-- Show camera-based directions and, on supported devices, a WebXR path.
+- Show camera-based directions, WebXR paths on supported devices, and compass
+  screen-arrow guidance with room-sign/QR re-checkpoints on other phones.
 - Save tours on the current device, export and import `.sgtour` files, and
   optionally upload tours to create a shareable link and QR code.
 - Cache the app shell as a progressive web app (PWA), so it can reopen when
@@ -138,6 +139,11 @@ small shared helpers.
 - **`js/voice.js`** — Shared browser speech helpers. It starts speech
   recognition for spoken searches and uses speech synthesis to read
   directions. Browser support varies.
+- **`js/graph.js`** and **`js/route.js`** — The mapped navigation graph,
+  checkpoint metadata, route planning, and route-following logic.
+- **`js/mapper.js`** and **`js/navigate.js`** — AR map recording and map-based
+  navigation. Maps can include printable QR checkpoints for compass-based
+  screen-arrow guidance on phones without WebXR floor tracking.
 - **`js/share.js`** — Online tour sharing. It uploads tour images and JSON
   metadata to Supabase Storage, creates the share URL, and downloads and saves
   a shared tour when someone opens that URL.
@@ -162,7 +168,8 @@ small shared helpers.
   Voice input depends on browser speech-recognition support.
 - **External libraries:** `index.html` loads Pannellum and QRCode from jsDelivr.
   `js/ai.js` loads Transformers.js from jsDelivr and Tesseract.js when OCR is
-  needed. `js/xr.js` loads Three.js from jsDelivr.
+  needed. `js/navigate.js` loads jsQR only if native QR scanning is unavailable.
+  `js/xr.js` loads Three.js from jsDelivr.
 
 ## Running the project
 
@@ -209,16 +216,20 @@ The look follows the "true-black flat" style from the taste-skill app-screen cha
 
 ## Navigate (the FESTU.Navigator-style flow)
 
-Scan a room sign, confirm the number, pick a destination, follow chevrons on the floor.
+Scan a room sign, confirm the number, pick a destination, then follow AR or screen-arrow guidance.
 
-1. **Map a space** (Navigate tab). Needs WebXR: Chrome on an ARCore Android phone. Stand facing a sign, tap *Mark room*,
-   type the number on the keypad. Walk the corridor and mark each room you pass. Breadcrumbs every 1.2 m become the
-   graph; walking back over old ground snaps onto existing nodes, so branches and loops form on their own. *Finish* saves.
+1. **Map a space** (Navigate tab). Recording needs WebXR: Chrome on an ARCore-supported Android phone, Google Play Services for AR,
+   and HTTPS. Stand facing a sign, tap *Mark room*, type the number on the keypad. Walk the corridor and mark each room you pass.
+   At each junction, tap *Add QR checkpoint*. The app downloads a QR image: print it and place it at that junction, facing the
+   corridor. Breadcrumbs every 1.2 m become the graph; walking back over old ground snaps onto existing nodes, so branches and
+   loops form on their own. *Finish* saves. Unsupported phones can still open maps and preview or simulate routes.
 2. **Scan a sign**. Tesseract.js reads the room number (loaded on first use). Confirm it, or choose *Type the number*.
 3. **Pick a destination** from the searchable list, preview the route on the map, or *Simulate the walk* (works on any device).
-4. **Start AR**. Stand where you scanned the sign, facing it. The route is A* over the graph, smoothed (Chaikin) and
-   resampled every 0.5 m. 14 chevrons show ahead of you; leaving the route by 3 m for 1.5 s re-routes. *Recalibrate*
-   re-aligns at any sign you pass; tap *End* to change destination without leaving AR.
+4. **Start AR or arrow guidance**. On a WebXR phone, stand where you scanned the sign, facing it. The route is A* over the graph,
+   smoothed (Chaikin) and resampled every 0.5 m. 14 chevrons show ahead; leaving the route by 3 m for 1.5 s re-routes.
+   On phones without WebXR, compass guidance shows a screen arrow toward the next marked room or QR checkpoint. Scan the sign or
+   QR at junctions to re-anchor. This fallback does not track walking progress between scans, so mark QR codes at turns and
+   follow posted building signs if the arrow is unclear.
 
 Files: `graph.js` (map model, recorder, import validation), `route.js` (A*, smoothing, alignment, walker), `minimap.js`,
 `ocr.js`, `xrkit.js` (WebXR + three.js), `navigate.js`, `mapper.js`. Maps export and import as `.sgmap` JSON.
@@ -235,4 +246,7 @@ The AR layer (`xrkit.js`) has no automated test: it needs a real WebXR device.
 - The AR heading comes from how you face the sign, so it is only as good as how squarely you stand to it. Recalibrate at
   the next sign if arrows drift. Corridors are matched by position only, with no visual re-localisation.
 - A map is one floor of one building. Routes between floors or buildings are not supported.
-- iOS has no WebXR, so the AR walk and mapping are Android-only. Route preview and the simulator work everywhere.
+- Screen-arrow guidance needs a usable device compass and camera permissions. It cannot track walking progress between scanned
+  signs/checkpoints, and depends on QR codes being printed and placed correctly.
+- iOS has no WebXR, so map recording is Android-only. Route preview and the simulator work everywhere; screen-arrow guidance
+  works on other phones only when their browser exposes a compass.

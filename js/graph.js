@@ -1,6 +1,6 @@
 // A map is a graph of positions in metres, recorded by walking (see mapper.js).
-// node: { id, pos:[x,y,z], nb:[ids], room?:'422', yaw?:radians }.  A node with `room` is an entry: the
-// spot in front of a door, and `yaw` is the heading you face when looking at its sign.
+// node: { id, pos:[x,y,z], nb:[ids], room?:'422', yaw?:radians, checkpoint?:token }. A node with
+// `room` or `checkpoint` is a place a visitor can scan to re-anchor their position.
 // Heading convention: yaw 0 faces -z; yaw +90deg faces -x (a left turn is a positive change).
 export const d2 = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 export const d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -47,6 +47,17 @@ export class Recorder {
     else { n = addNode(this.map, pos, { room, yaw }); if(this.last != null) link(this.map, this.last, n.id); }
     this.last = n.id; return n;
   }
+  markCheckpoint(pos, yaw, token){
+    const near = nearestNode(this.map, pos, this.snap);
+    let n = near && !near.room ? near : null;
+    if(!n){
+      n = addNode(this.map, pos);
+      const from = near || (this.last != null ? byId(this.map, this.last) : null);
+      if(from) link(this.map, from.id, n.id);
+    } else if(this.last != null && this.last !== n.id) link(this.map, this.last, n.id);
+    n.checkpoint = token; n.yaw = yaw; this.last = n.id;
+    return n;
+  }
 }
 
 // A made-up L-shaped corridor so the flow can be tried without walking a real building.
@@ -75,6 +86,7 @@ export function parseMap(text){
     const out = { id: n.id, pos: n.pos.slice(), nb: (Array.isArray(n.nb) ? n.nb : []).filter(i => ids.has(i) && i !== n.id) };
     if(n.room != null && String(n.room).trim()) out.room = String(n.room).trim().slice(0, 12);
     if(num(n.yaw)) out.yaw = n.yaw;
+    if(typeof n.checkpoint === 'string' && /^[A-Za-z0-9_-]{8,100}$/.test(n.checkpoint)) out.checkpoint = n.checkpoint;
     return out;
   });
   nodes.forEach(n => n.nb.forEach(i => { const o = nodes.find(x => x.id === i); if(!o.nb.includes(n.id)) o.nb.push(n.id); }));
