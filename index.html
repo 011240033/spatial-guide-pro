@@ -53,12 +53,12 @@
 
   <section id="mapnew" class="view" hidden>
     <div class="titlerow"><h1>Map a space</h1></div>
-    <p class="sub">Walk the corridors once with AR on. Spatial Guide records the paths, and the rooms you mark become destinations. Add a QR checkpoint at junctions so phones without floor-tracking AR can re-check their position. Mapping requires Chrome on an ARCore-supported Android phone, Google Play Services for AR, and HTTPS. Other phones can follow a screen arrow between checkpoints.</p>
+    <p class="sub">Walk the corridors once with AR on. Spatial Guide records the path and the rooms you mark become destinations. At junctions, add a QR checkpoint so visitors can confirm their position. The app can capture occasional images at marked places and use CLIP to suggest labels after mapping, if the browser supports camera images in AR. Mapping needs Chrome on an ARCore-supported Android phone, Google Play Services for AR, and HTTPS.</p>
     <div class="field"><label for="mBuilding">Building</label><input id="mBuilding" placeholder="Main building" autocomplete="off"></div>
     <div class="field"><label for="mFloor">Floor <span class="opt">optional</span></label><input id="mFloor" placeholder="4" autocomplete="off"></div>
     <ol class="steps plain">
       <li><b>Face a sign</b>Stand in front of a room sign and tap Mark room. Type its number on the keypad.</li>
-      <li><b>Walk</b>Go along the corridor. Mark room signs and add a QR checkpoint at junctions; print each QR and place it there.</li>
+      <li><b>Walk</b>Mark room signs and add QR checkpoints at junctions; print each QR and place it there. Optional CLIP suggestions are processed after you finish, to avoid slowing the AR walk.</li>
       <li><b>Finish</b>Tap Finish to save. Start every later navigation by scanning one of these signs.</li>
     </ol>
     <button id="mStart" class="block" type="button">Start mapping</button>
@@ -197,6 +197,7 @@
   </div>
   <div id="xrMap" class="dock" hidden>
     <p id="mMsg" role="status"></p><p id="mStats" class="sub"></p>
+    <details id="mDiagnostics"><summary>Mapping performance</summary><p id="mDiagText" class="sub" role="status" aria-live="polite"></p></details>
     <div class="row"><button id="mMark" type="button">Mark room</button><button id="mCheckpoint" class="ghost" type="button">Add QR checkpoint</button><button id="mFinish" class="ghost" type="button">Finish</button><button id="mCancel" class="ghost" type="button">Cancel</button></div>
   </div>
   <div id="xrSheet" class="sheet" hidden>

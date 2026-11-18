@@ -221,6 +221,9 @@ button.danger{background:var(--negative-bg);color:var(--negative)}
 #nGuideArrow path{fill:var(--accent);stroke:#fff;stroke-width:3;stroke-linejoin:round}
 #nGuideHud{z-index:2}
 #nGuideDock{z-index:2}
+#mDiagnostics{font-size:13px;color:var(--muted)}
+#mDiagnostics summary{width:max-content;cursor:pointer}
+#mDiagnostics p{margin:8px 0 0;font-size:13px;font-weight:400;line-height:19px}
 #xrOverlay{position:fixed;inset:0;z-index:20;pointer-events:none}
 #xrOverlay button{pointer-events:auto}
 .ar-debug{position:absolute;z-index:1;left:var(--pad);right:var(--pad);bottom:calc(138px + env(safe-area-inset-bottom));

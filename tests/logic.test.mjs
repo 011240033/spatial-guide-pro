@@ -72,6 +72,14 @@ t('parseMap accepts a saved map and repairs one-way links', () => {
   const raw = JSON.parse(JSON.stringify(m)); raw.nodes[0].nb = [raw.nodes[1].id]; raw.nodes[1].nb = [];
   const p = parseMap(JSON.stringify(raw)); assert.ok(p.nodes[1].nb.includes(p.nodes[0].id)); assert.equal(p.nodes.length, m.nodes.length); assert.notEqual(p.id, m.id);
 });
+t('parseMap preserves bounded CLIP suggestions as non-authoritative metadata', () => {
+  const raw = JSON.parse(JSON.stringify(m));
+  raw.nodes[0].clipSuggestion = { label: 'Bedroom', confidence: 0.62 };
+  raw.nodes[1].clipSuggestion = { label: '<script>', confidence: 1.2 };
+  const p = parseMap(JSON.stringify(raw));
+  assert.deepEqual(p.nodes[0].clipSuggestion, { label: 'Bedroom', confidence: 0.62 });
+  assert.equal(p.nodes[1].clipSuggestion, undefined);
+});
 t('parseMap rejects junk and trims hostile labels', () => {
   assert.throws(() => parseMap('{"nodes":[]}')); assert.throws(() => parseMap('{"nodes":[{"id":1,"pos":["a",0,0]}]}')); assert.throws(() => parseMap('null'));
   const p = parseMap(JSON.stringify({ nodes: [{ id: 1, pos: [0, 0, 0], nb: [99], room: '<img src=x onerror=alert(1)>'.repeat(3) }] }));

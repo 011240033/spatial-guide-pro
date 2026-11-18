@@ -87,6 +87,11 @@ export function parseMap(text){
     if(n.room != null && String(n.room).trim()) out.room = String(n.room).trim().slice(0, 12);
     if(num(n.yaw)) out.yaw = n.yaw;
     if(typeof n.checkpoint === 'string' && /^[A-Za-z0-9_-]{8,100}$/.test(n.checkpoint)) out.checkpoint = n.checkpoint;
+    if(n.clipSuggestion && typeof n.clipSuggestion.label === 'string' &&
+       /^[A-Za-z ]{1,32}$/.test(n.clipSuggestion.label) && num(n.clipSuggestion.confidence) &&
+       n.clipSuggestion.confidence >= 0 && n.clipSuggestion.confidence <= 1){
+      out.clipSuggestion = { label: n.clipSuggestion.label, confidence: n.clipSuggestion.confidence };
+    }
     return out;
   });
   nodes.forEach(n => n.nb.forEach(i => { const o = nodes.find(x => x.id === i); if(!o.nb.includes(n.id)) o.nb.push(n.id); }));

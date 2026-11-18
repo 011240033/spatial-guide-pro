@@ -226,6 +226,9 @@ export async function suggestRoomNames(blob, say = () => {}){
 export async function labelFrame(src){
   return (await rankFrameLabels(await embedImage(src)))[0];
 }
+export async function suggestFrameLabels(src, limit = 3){
+  return (await rankFrameLabels(await embedImage(src))).slice(0, limit);
+}
 async function rankFrameLabels(e){
   const te = await labelEmbeds();
   const raw = te.map(t => 100*dot(e, t)), mx = Math.max(...raw), ex = raw.map(x => Math.exp(x - mx)), z = ex.reduce((a,b) => a+b);

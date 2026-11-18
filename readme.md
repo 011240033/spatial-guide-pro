@@ -143,7 +143,9 @@ small shared helpers.
   checkpoint metadata, route planning, and route-following logic.
 - **`js/mapper.js`** and **`js/navigate.js`** — AR map recording and map-based
   navigation. Maps can include printable QR checkpoints for compass-based
-  screen-arrow guidance on phones without WebXR floor tracking.
+  screen-arrow guidance on phones without WebXR floor tracking. If the browser
+  grants WebXR raw camera access, the mapper captures only at marked rooms and
+  checkpoints, then runs CLIP after the AR session ends to avoid slowing tracking.
 - **`js/share.js`** — Online tour sharing. It uploads tour images and JSON
   metadata to Supabase Storage, creates the share URL, and downloads and saves
   a shared tour when someone opens that URL.
@@ -222,7 +224,8 @@ Scan a room sign, confirm the number, pick a destination, then follow AR or scre
    and HTTPS. Stand facing a sign, tap *Mark room*, type the number on the keypad. Walk the corridor and mark each room you pass.
    At each junction, tap *Add QR checkpoint*. The app downloads a QR image: print it and place it at that junction, facing the
    corridor. Breadcrumbs every 1.2 m become the graph; walking back over old ground snaps onto existing nodes, so branches and
-   loops form on their own. *Finish* saves. Unsupported phones can still open maps and preview or simulate routes.
+   loops form on their own. When supported, snapshots from marked spots are labeled after the AR walk using CLIP; these are
+   suggestions, not room identifiers. *Finish* saves. Unsupported phones can still open maps and preview or simulate routes.
 2. **Scan a sign**. Tesseract.js reads the room number (loaded on first use). Confirm it, or choose *Type the number*.
 3. **Pick a destination** from the searchable list, preview the route on the map, or *Simulate the walk* (works on any device).
 4. **Start AR or arrow guidance**. On a WebXR phone, stand where you scanned the sign, facing it. The route is A* over the graph,
@@ -248,5 +251,7 @@ The AR layer (`xrkit.js`) has no automated test: it needs a real WebXR device.
 - A map is one floor of one building. Routes between floors or buildings are not supported.
 - Screen-arrow guidance needs a usable device compass and camera permissions. It cannot track walking progress between scanned
   signs/checkpoints, and depends on QR codes being printed and placed correctly.
+- CLIP sample capture during mapping depends on the browser's optional WebXR `camera-access` support. If unavailable, AR mapping
+  still works, but no CLIP suggestions are produced. Mapping diagnostics report AR update rate and map-step processing time.
 - iOS has no WebXR, so map recording is Android-only. Route preview and the simulator work everywhere; screen-arrow guidance
   works on other phones only when their browser exposes a compass.

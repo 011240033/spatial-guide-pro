@@ -18,7 +18,8 @@ export function fillRooms(ul, items, query, onPick, emptyText = 'No rooms on thi
   if(!shown.length){ ul.append(el('li', 'none', q ? 'No rooms match.' : emptyText)); return; }
   shown.forEach(({ map, n }) => {
     const li = el('li'), b = el('button', 'roomrow'); b.type = 'button';
-    b.append(el('b', '', n.room), el('span', '', placeOf(map))); b.onclick = () => onPick(map, n); li.append(b); ul.append(li);
+    const sub = [n.clipSuggestion ? `CLIP guess: ${n.clipSuggestion.label}` : '', placeOf(map)].filter(Boolean).join(' · ');
+    b.append(el('b', '', n.room), el('span', '', sub)); b.onclick = () => onPick(map, n); li.append(b); ul.append(li);
   });
 }
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
